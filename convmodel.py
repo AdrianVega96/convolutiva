@@ -152,5 +152,5 @@ with tf.Session() as sess:
     plt.xlabel("Epoch")
     plt.ylabel("Error")
     plt.title("Error de validación")
-    plt.savefig("prueba.png")
+    #plt.savefig("prueba.png")
     plt.show()
