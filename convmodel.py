@@ -22,6 +22,7 @@ def one_hot(x, n):
 
 num_classes = 3
 batch_size = 4
+batch_size_test = 40
 
 # --------------------------------------------------
 #
@@ -63,28 +64,30 @@ def dataSource(paths, batch_size):
 #
 # --------------------------------------------------
 
-def myModel(X, reuse=False):
+def myModel(X, test, reuse=False):
     with tf.variable_scope('ConvNet', reuse=reuse):
         o1 = tf.layers.conv2d(inputs=X, filters=32, kernel_size=3, activation=tf.nn.relu)
         o2 = tf.layers.max_pooling2d(inputs=o1, pool_size=2, strides=2)
         o3 = tf.layers.conv2d(inputs=o2, filters=64, kernel_size=3, activation=tf.nn.relu)
         o4 = tf.layers.max_pooling2d(inputs=o3, pool_size=2, strides=2)
-
-        h = tf.layers.dense(inputs=tf.reshape(o4, [batch_size * 3, 18 * 33 * 64]), units=5, activation=tf.nn.relu)
+        if test==True:
+            h = tf.layers.dense(inputs=tf.reshape(o4, [batch_size_test * 3, 18 * 33 * 64]), units=5, activation=tf.nn.relu)
+        else:
+            h = tf.layers.dense(inputs=tf.reshape(o4, [batch_size * 3, 18 * 33 * 64]), units=5, activation=tf.nn.relu)
         y = tf.layers.dense(inputs=h, units=3, activation=tf.nn.softmax)
     return y
 
 example_batch_train, label_batch_train = dataSource(["data3/0/*.jpg", "data3/1/*.jpg", "data3/2/*.jpg"], batch_size=batch_size)
 example_batch_valid, label_batch_valid = dataSource(["valid/0/*.jpg", "valid/1/*.jpg", "valid/2/*.jpg"], batch_size=batch_size)
-example_batch_test, label_batch_test = dataSource(["test/0/*.jpg", "test/1/*.jpg", "test/2/*.jpg"], batch_size=batch_size)
+example_batch_test, label_batch_test = dataSource(["test/0/*.jpg", "test/1/*.jpg", "test/2/*.jpg"], batch_size=batch_size_test)
 
 label_batch_train = tf.cast(label_batch_train, tf.float32)
 label_batch_valid = tf.cast(label_batch_valid, tf.float32)
 label_batch_test = tf.cast(label_batch_test, tf.float32)
 
-example_batch_train_predicted = myModel(example_batch_train, reuse=False)
-example_batch_valid_predicted = myModel(example_batch_valid, reuse=True)
-example_batch_test_predicted = myModel(example_batch_test, reuse=True)
+example_batch_train_predicted = myModel(example_batch_train, False, reuse=False)
+example_batch_valid_predicted = myModel(example_batch_valid, False, reuse=True)
+example_batch_test_predicted = myModel(example_batch_test, True, reuse=True)
 
 cost = tf.reduce_sum(tf.square(example_batch_train_predicted - label_batch_train))
 cost_valid = tf.reduce_sum(tf.square(example_batch_valid_predicted - label_batch_valid))
@@ -123,7 +126,7 @@ with tf.Session() as sess:
         if i % 20 == 0:
             print("Iter:", i, "---------------------------------------------")
             print(sess.run(label_batch_train))
-            print(sess.run(example_batch_valid_predicted))
+            print(sess.run(example_batch_train_predicted))
             print("Error entrenamiento: ", sess.run(cost))
             #error_prev = error_act
             #error_act = sess.run(cost_valid)
@@ -132,8 +135,7 @@ with tf.Session() as sess:
             error_prev = error_act
             error_act = sess.run(cost_valid)
             errores_val.append(error_act)
-
-        i=i+1
+        i+=1
 
     save_path = saver.save(sess, "./tmp/model.ckpt")
     print("Model saved in file: %s" % save_path)
@@ -152,5 +154,4 @@ with tf.Session() as sess:
     plt.xlabel("Epoch")
     plt.ylabel("Error")
     plt.title("Error de validación")
-    #plt.savefig("prueba.png")
     plt.show()
